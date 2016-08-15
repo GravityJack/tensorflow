@@ -49,7 +49,7 @@ function getNonTensorBoardComponents() {
       .filter(function(file) {
         var prefix = file.slice(0,3);
         return fs.statSync(path.join('components', file)).isDirectory() &&
-            prefix !== 'tf-';
+            !(prefix === 'tf-' || prefix === 'vz-');
       })
       .map(function(dir) { return '/' + dir + '/'; });
 }
