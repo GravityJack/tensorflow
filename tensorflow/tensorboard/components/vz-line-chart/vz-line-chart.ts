@@ -45,7 +45,7 @@ module VZ {
     private smoothingEnabled: Boolean;
 
     constructor(
-        xType: string, colorScale: Plottable.Scales.Color,
+        xType: string, yScale: string, colorScale: Plottable.Scales.Color,
         tooltip: d3.Selection<any>) {
       this.seriesNames = [];
       this.name2datasets = {};
@@ -59,10 +59,10 @@ module VZ {
       // need to do a single bind, so we can deregister the callback from
       // old Plottable.Datasets. (Deregistration is done by identity checks.)
       this.onDatasetChanged = this._onDatasetChanged.bind(this);
-      this.buildChart(xType);
+      this.buildChart(xType, yScale);
     }
 
-    private buildChart(xType: string) {
+    private buildChart(xType: string, yScale: string) {
       if (this.outer) {
         this.outer.destroy();
       }
@@ -71,7 +71,7 @@ module VZ {
       this.xScale = xComponents.scale;
       this.xAxis = xComponents.axis;
       this.xAxis.margin(0).tickLabelPadding(3);
-      this.yScale = new Plottable.Scales.Linear();
+      this.yScale = yScale === 'log' ? new Plottable.Scales.ModifiedLog() : new Plottable.Scales.Linear();
       this.yAxis = new Plottable.Axes.Numeric(this.yScale, 'left');
       let yFormatter = VZ.ChartHelpers.multiscaleFormatter(
           VZ.ChartHelpers.Y_AXIS_FORMATTER_PRECISION);
