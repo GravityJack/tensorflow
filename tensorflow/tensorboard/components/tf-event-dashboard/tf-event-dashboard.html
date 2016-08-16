@@ -30,6 +30,7 @@ The #center div contains tf-line-charts embedded inside tf-collapsable-panes.
 -->
 <dom-module id="tf-event-dashboard">
   <template>
+
     <div id="plumbing">
       <tf-color-scale
         id="colorScale"
@@ -110,6 +111,12 @@ The #center div contains tf-line-charts embedded inside tf-collapsable-panes.
                       icon="fullscreen"
                       on-tap="toggleSelected"
                     ></paper-icon-button>
+                      <paper-icon-button
+                              class="log-option-button"
+                              icon="fullscreen"
+                              on-tap="toggleYScale"
+                              ></paper-icon-button>
+
                   </div>
                   <template is="dom-if" if="[[_showDownloadLinks]]">
                     <div class="card-bottom-row">
@@ -185,6 +192,7 @@ The #center div contains tf-line-charts embedded inside tf-collapsable-panes.
       },
       _showDownloadLinksObserver: TF.URIStorage.getBooleanObserver(
           '_showDownloadLinks', false),
+
       toggleSelected: function(e) {
         var currentTarget = Polymer.dom(e.currentTarget);
         var parentDiv = currentTarget.parentNode.parentNode;
@@ -194,6 +202,15 @@ The #center div contains tf-line-charts embedded inside tf-collapsable-panes.
           chartScaffold.chart().redraw();
         }
       },
+
+      toggleYScale: function(e) {
+        var c = this.parentNode.querySelector('vz-line-chart');
+        if (c !== null) {
+          c.yScale = c.yScale === 'log' ? 'linear' : 'log';
+          c.redraw();
+        }
+      },
+
       validRuns: function(tag, runsChange, run2tagChange) {
         var _this = this;
         var result = this.selectedRuns.filter(function(r) {

@@ -26,12 +26,6 @@ plugin is requred to implement two functions:
 -->
 <dom-module id="tf-chart-scaffold">
   <template>
-    <paper-icon-button
-            class="test-log-button"
-            icon="fullscreen"
-            on-tap="toggleYScale"
-            ></paper-icon-button>
-
     <content></content>
     <style>
       :host {
@@ -43,13 +37,6 @@ plugin is requred to implement two functions:
         flex-shrink: 1;
         position: relative;
       }
-
-        .test-log-button {
-            position: absolute;
-            left: 100 px;
-            top: 100 px;
-        }
-
     </style>
   </template>
   <script>
@@ -92,17 +79,6 @@ plugin is requred to implement two functions:
           }.bind(this));
         }.bind(this));
       },
-
-      toggleYScale: function(e) {
-        var c = this.querySelector('vz-line-chart');
-        if (c !== null) {
-            var yscale = c.yScale;
-            yscale = yscale === 'linear' ? 'log' : 'linear';
-            c.yScale = yscale;
-            c.redraw();
-        }
-      },
-
       _changeSeries: function() {
         if (!this._attached) {
            return;
