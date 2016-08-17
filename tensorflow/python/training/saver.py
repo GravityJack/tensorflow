@@ -1192,9 +1192,16 @@ class Saver(object):
             "'latest_filename' collides with 'save_path': '%s' and '%s'" %
             (latest_filename, save_path))
 
+    if not os.path.exists(os.path.dirname(save_path)):
+      raise ValueError("Parent directory of {} doesn't exist, can't save.".format(save_path))
+
     save_path = os.path.dirname(save_path)
     if not isinstance(sess, session.SessionInterface):
       raise TypeError("'sess' must be a Session; %s" % sess)
+
+    # Note a few lines above save_path was set to os.path.dirname(save_path)
+    if not os.path.exists(save_path):
+      raise ValueError("Parent directory {} doesn't exist, can't save.".format(save_path))
 
     model_checkpoint_path = sess.run(
         self.saver_def.save_tensor_name,
@@ -1451,7 +1458,7 @@ def read_meta_graph_file(filename):
   return meta_graph_def
 
 
-def _import_meta_graph_def(meta_graph_def):
+def _import_meta_graph_def(meta_graph_def, clear_devices):
   """Recreates a Graph saved in a `MetaGraphDef` proto.
 
   This function adds all the nodes from the meta graph def proto to the current
@@ -1459,6 +1466,8 @@ def _import_meta_graph_def(meta_graph_def):
 
   Args:
     meta_graph_def: `MetaGraphDef` protocol buffer.
+    clear_devices: Boolean which controls whether to clear device information
+        from graph_def.
 
   Returns:
     A saver constructed from `saver_def` in `meta_graph_def` or None.
@@ -1470,7 +1479,13 @@ def _import_meta_graph_def(meta_graph_def):
   producer_op_list = None
   if meta_graph_def.meta_info_def.HasField("stripped_op_list"):
     producer_op_list = meta_graph_def.meta_info_def.stripped_op_list
-  importer.import_graph_def(meta_graph_def.graph_def, name="",
+  input_graph_def = meta_graph_def.graph_def
+  # Remove all the explicit device specifications for this node. This helps to
+  # make the graph more portable.
+  if clear_devices:
+    for node in input_graph_def.node:
+      node.device = ""
+  importer.import_graph_def(input_graph_def, name="",
                             producer_op_list=producer_op_list)
 
   # Restores all the other collections.
@@ -1517,7 +1532,7 @@ def _import_meta_graph_def(meta_graph_def):
       return None
 
 
-def import_meta_graph(meta_graph_or_file):
+def import_meta_graph(meta_graph_or_file, clear_devices=False):
   """Recreates a Graph saved in a `MetaGraphDef` proto.
 
   This function takes a `MetaGraphDef` protocol buffer as input. If
@@ -1571,6 +1586,8 @@ def import_meta_graph(meta_graph_or_file):
   Args:
     meta_graph_or_file: `MetaGraphDef` protocol buffer or filename (including
       the path) containing a `MetaGraphDef`.
+    clear_devices: Boolean which controls whether to clear device information
+      from graph_def. Default false.
 
   Returns:
     A saver constructed from `saver_def` in `MetaGraphDef` or None.
@@ -1579,9 +1596,10 @@ def import_meta_graph(meta_graph_or_file):
     (i.e., there are no variables to restore).
   """
   if isinstance(meta_graph_or_file, meta_graph_pb2.MetaGraphDef):
-    return _import_meta_graph_def(meta_graph_or_file)
+    return _import_meta_graph_def(meta_graph_or_file, clear_devices)
   else:
-    return _import_meta_graph_def(read_meta_graph_file(meta_graph_or_file))
+    return _import_meta_graph_def(read_meta_graph_file(meta_graph_or_file),
+                                  clear_devices)
 
 
 def export_meta_graph(filename=None, meta_info_def=None, graph_def=None,
@@ -1589,7 +1607,7 @@ def export_meta_graph(filename=None, meta_info_def=None, graph_def=None,
   """Returns `MetaGraphDef` proto. Optionally writes it to filename.
 
   This function exports the graph, saver, and collection objects into
-  `MetaGraphDef` protocol buffer with the intension of it being imported
+  `MetaGraphDef` protocol buffer with the intention of it being imported
   at a later time or location to restart training, run inference, or be
   a subgraph.
 
