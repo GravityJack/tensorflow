@@ -30,7 +30,6 @@ The #center div contains tf-line-charts embedded inside tf-collapsable-panes.
 -->
 <dom-module id="tf-event-dashboard">
   <template>
-
     <div id="plumbing">
       <tf-color-scale
         id="colorScale"
@@ -113,7 +112,7 @@ The #center div contains tf-line-charts embedded inside tf-collapsable-panes.
                     ></paper-icon-button>
                       <paper-icon-button
                               class="log-option-button"
-                              icon="fullscreen"
+                              icon="line_weight"
                               on-tap="toggleYScale"
                               ></paper-icon-button>
 
@@ -204,9 +203,11 @@ The #center div contains tf-line-charts embedded inside tf-collapsable-panes.
       },
 
       toggleYScale: function(e) {
+        var b = this.parentNode.querySelector('.log-option-button');
         var c = this.parentNode.querySelector('vz-line-chart');
         if (c !== null) {
           c.yScale = c.yScale === 'log' ? 'linear' : 'log';
+          b.icon = c.yScale === 'log' ? 'reorder' : 'line_weight';
           c.redraw();
         }
       },
