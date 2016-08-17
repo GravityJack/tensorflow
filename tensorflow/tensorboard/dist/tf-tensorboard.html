@@ -1820,7 +1820,7 @@ limitations under the License.
 var VZ;
 (function (VZ) {
     var LineChart = (function () {
-        function LineChart(xType, colorScale, tooltip) {
+        function LineChart(xType, yScale, colorScale, tooltip) {
             this.seriesNames = [];
             this.name2datasets = {};
             this.colorScale = colorScale;
@@ -1833,9 +1833,9 @@ var VZ;
             // need to do a single bind, so we can deregister the callback from
             // old Plottable.Datasets. (Deregistration is done by identity checks.)
             this.onDatasetChanged = this._onDatasetChanged.bind(this);
-            this.buildChart(xType);
+            this.buildChart(xType, yScale);
         }
-        LineChart.prototype.buildChart = function (xType) {
+        LineChart.prototype.buildChart = function (xType, yScale) {
             if (this.outer) {
                 this.outer.destroy();
             }
@@ -1844,7 +1844,7 @@ var VZ;
             this.xScale = xComponents.scale;
             this.xAxis = xComponents.axis;
             this.xAxis.margin(0).tickLabelPadding(3);
-            this.yScale = new Plottable.Scales.Linear();
+            this.yScale = yScale === 'log' ? new Plottable.Scales.ModifiedLog() : new Plottable.Scales.Linear();
             this.yAxis = new Plottable.Axes.Numeric(this.yScale, 'left');
             var yFormatter = VZ.ChartHelpers.multiscaleFormatter(VZ.ChartHelpers.Y_AXIS_FORMATTER_PRECISION);
             this.yAxis.margin(0).tickLabelPadding(5).formatter(yFormatter);
@@ -2377,6 +2377,11 @@ var VZ;
           value: 'step'
         },
 
+        yScale: {
+          type: String,
+          value: 'linear'
+        },
+
         _attached: Boolean,
         _chart: Object,
         _visibleSeriesCache: {
@@ -2393,7 +2398,7 @@ var VZ;
         }
       },
       observers: [
-        "_makeChart(xType, colorScale, _attached)",
+        "_makeChart(xType, yScale, colorScale, _attached)",
         "_reloadFromCache(_chart)",
         "_smoothingChanged(smoothingDecay, smoothingEnabled, _chart)"
       ],
@@ -2437,6 +2442,7 @@ var VZ;
       redraw: function() {
         this._chart.redraw();
       },
+
       attached: function() {
         this._attached = true;
       },
@@ -2447,7 +2453,7 @@ var VZ;
         this.scopeSubtree(this.$.tooltip, true);
         this.scopeSubtree(this.$.chartsvg, true);
       },
-      _makeChart: function(xType, colorScale, _attached) {
+      _makeChart: function(xType, yScale, colorScale, _attached) {
         if (this._makeChartAsyncCallbackId === null) {
           this.cancelAsync(this._makeChartAsyncCallbackId);
         }
@@ -2457,7 +2463,7 @@ var VZ;
           if (!this._attached) return;
           if (this._chart) this._chart.destroy();
           var tooltip = d3.select(this.$.tooltip);
-          var chart = new VZ.LineChart(xType, colorScale, tooltip);
+          var chart = new VZ.LineChart(xType, yScale, colorScale, tooltip);
           var svg = d3.select(this.$.chartsvg);
           chart.renderTo(svg);
           this._chart = chart;
@@ -2680,6 +2686,14 @@ var VZ;
         bottom: 0px;
         color: #2196F3;
         display: block;
+      }
+
+      .log-option-button {
+          position: absolute;
+          margin-left: 26px;
+          bottom: 0px;
+          color: #2196F3;
+          display: block;
       }
 
       #content-container{
@@ -3698,6 +3712,7 @@ var TF;
 
 <dom-module id="tf-event-dashboard" assetpath="../tf-event-dashboard/">
   <template>
+
     <div id="plumbing">
       <tf-color-scale id="colorScale" runs="[[runs]]" out-color-scale="{{colorScale}}"></tf-color-scale>
     </div>
@@ -3733,6 +3748,8 @@ var TF;
                       <vz-line-chart id="chart" x-type="[[_xType]]" color-scale="[[colorScale]]" smoothing-decay="[[_smoothingDecay]]" smoothing-enabled="[[_smoothingEnabled]]" on-keyup="toggleSelected" tabindex="2"></vz-line-chart>
                     </tf-chart-scaffold>
                     <paper-icon-button class="expand-button" icon="fullscreen" on-tap="toggleSelected"></paper-icon-button>
+                      <paper-icon-button class="log-option-button" icon="line_weight" on-tap="toggleYScale"></paper-icon-button>
+
                   </div>
                   <template is="dom-if" if="[[_showDownloadLinks]]">
                     <div class="card-bottom-row">
@@ -3803,6 +3820,7 @@ var TF;
       },
       _showDownloadLinksObserver: TF.URIStorage.getBooleanObserver(
           '_showDownloadLinks', false),
+
       toggleSelected: function(e) {
         var currentTarget = Polymer.dom(e.currentTarget);
         var parentDiv = currentTarget.parentNode.parentNode;
@@ -3812,6 +3830,17 @@ var TF;
           chartScaffold.chart().redraw();
         }
       },
+
+      toggleYScale: function(e) {
+        var b = this.parentNode.querySelector('.log-option-button');
+        var c = this.parentNode.querySelector('vz-line-chart');
+        if (c !== null) {
+          c.yScale = c.yScale === 'log' ? 'linear' : 'log';
+          b.icon = c.yScale === 'log' ? 'reorder' : 'line_weight';
+          c.redraw();
+        }
+      },
+
       validRuns: function(tag, runsChange, run2tagChange) {
         var _this = this;
         var result = this.selectedRuns.filter(function(r) {
@@ -4283,6 +4312,8 @@ var VZ;
             <rect class="background"></rect>
           </g>
           <g class="x-axis-hover"></g>
+          <g class="y-axis-hover"></g>
+          <g class="y-slice-axis-hover"></g>
         </g>
       </svg>
 
@@ -4325,6 +4356,19 @@ var VZ;
           stroke-width: 1px;
         }
 
+        .hover text {
+          fill: black;
+          opacity: 0;
+        }
+
+        .hover.hover-closest circle {
+          fill: black!important;
+        }
+
+        .hover.hover-closest text {
+          opacity: 1;
+        }
+
         .baseline {
           stroke: black;
           stroke-opacity: 0.1;
@@ -4336,11 +4380,20 @@ var VZ;
           stroke-opacity: 0.5;
         }
 
-        .x-axis-hover {
+        .outline.outline-hover {
+          stroke: black!important;
+          stroke-opacity: 1;
+        }
+
+        .x-axis-hover,
+        .y-axis-hover,
+        .y-slice-axis-hover {
           pointer-events: none;
         }
 
-        .x-axis-hover .label {
+        .x-axis-hover .label,
+        .y-axis-hover .label,
+        .y-slice-axis-hover .label {
           opacity: 0;
           font-weight: bold;
           font-size: 11px;
@@ -4351,15 +4404,21 @@ var VZ;
           text-anchor: middle;
         }
 
-        .x-axis-hover line {
+        .y-axis-hover text,
+        .y-slice-axis-hover text {
+          text-anchor: start;
+        }
+
+        .x-axis-hover line,
+        .y-axis-hover line,
+        .y-slice-axis-hover line {
           stroke: black;
         }
 
-        .x-axis-hover rect {
+        .x-axis-hover rect,
+        .y-axis-hover rect,
+        .y-slice-axis-hover rect {
           fill: white;
-        }
-
-        .gradient {
         }
 
         .axis {
@@ -4653,6 +4712,7 @@ var VZ;
             .scale(ySliceScale)
             .ticks(Math.max(2, height / 15))
             .tickSize(width + 5)
+            .tickFormat(format)
             .orient("right");
 
         var xBinCentroid = function(d) {
@@ -4693,36 +4753,20 @@ var VZ;
         var bisect = d3.bisector(xRightAccessor).left;
         var stage = g.select(".stage")
             .on("mouseover", function() {
-              hoverUpdate.transition().style("opacity", 1);
-              edgeLabelUpdate.transition().style("opacity", 1)
+              hoverUpdate.style("opacity", 1);
+              xAxisHoverUpdate.style("opacity", 1);
+              yAxisHoverUpdate.style("opacity", 1);
+              ySliceAxisHoverUpdate.style("opacity", 1);
             })
             .on("mouseout", function() {
-              hoverUpdate.transition().style("opacity", 0);
-              edgeLabelUpdate.transition().style("opacity", 0)
+              hoverUpdate.style("opacity", 0);
+              xAxisHoverUpdate.style("opacity", 0);
+              yAxisHoverUpdate.style("opacity", 0);
+              ySliceAxisHoverUpdate.style("opacity", 0);
+              hoverUpdate.classed("hover-closest", false);
+              outlineUpdate.classed("outline-hover", false);
             })
-            .on("mousemove", function() {
-              var m = d3.mouse(this),
-                  v = xScale.invert(m[0]);
-
-              function hoverXIndex(d) {
-                return Math.min(d[binsProp].length - 1, bisect(d[binsProp], v));
-              }
-
-              var lastSliceData;
-              hoverUpdate
-                .attr("transform", function(d) {
-                  var index = hoverXIndex(d);
-                  lastSliceData = d;
-                  return "translate(" + xScale(d[binsProp][index][xProp] + d[binsProp][index][dxProp] / 2) + "," + ySliceScale(d[binsProp][index][yProp]) + ")";
-                });
-
-              var index = hoverXIndex(lastSliceData);
-
-              edgeLabelUpdate
-                  .attr("transform", function(d) { return"translate(" + xScale(lastSliceData[binsProp][index][xProp] + lastSliceData[binsProp][index][dxProp] / 2) + ", " + height + ")"; })
-                .select("text")
-                  .text(function(d) { return format(lastSliceData[binsProp][index][xProp] + lastSliceData[binsProp][index][dxProp] / 2); });
-            });
+            .on("mousemove", onMouseMove);
 
         var background = stage.select(".background")
             .attr("transform", "translate(" + -margin.left + "," + -margin.top + ")")
@@ -4736,7 +4780,8 @@ var VZ;
                 .sort(function(a, b) { return timeAccessor(a) - timeAccessor(b); }),
             histogramTransition = gTransition.selectAll(".histogram")
                 .attr("transform", function(d) {
-                  return "translate(0, " + (mode === "offset" ? (yScale(timeAccessor(d)) - sliceHeight) : 0) + ")";
+                  return "translate(0, " +
+                    (mode === "offset" ? (yScale(timeAccessor(d)) - sliceHeight) : 0) + ")";
                 });
 
         var baselineEnter = histogramEnter.append("line").attr("class", "baseline"),
@@ -4752,11 +4797,13 @@ var VZ;
                 .attr("d", function(d) { return path(d[binsProp]); })
                 .style("stroke-width", 1),
             outlineTransition = histogramTransition.select(".outline")
-                .attr("transform", "scale(" + width / outlineCanvasSize + ", " + sliceHeight / outlineCanvasSize + ")")
-                .style("stroke", function(d) { return (mode === "offset" ? "white" : outlineColor(timeAccessor(d))); })
+                .attr("transform", "scale(" + width / outlineCanvasSize + ", " +
+                      sliceHeight / outlineCanvasSize + ")")
+                .style("stroke", function(d) {
+                  return (mode === "offset" ? "white" : outlineColor(timeAccessor(d)));
+                })
                 .style("fill-opacity", function(d) { return (mode === "offset" ? 1 : 0); })
                 .style("fill", function(d) { return outlineColor(timeAccessor(d)); });
-
 
         var hoverEnter = histogramEnter.append("g")
                 .attr("class", "hover")
@@ -4768,32 +4815,66 @@ var VZ;
 
         hoverEnter.append("text")
             .style("display", "none")
-            .style("stroke", "white")
-            .style("stroke-width", 2)
             .attr("dx", 4);
 
-        hoverEnter.append("text")
-            .style("display", "none")
-            .attr("dx", 4);
+        var xAxisHover = g.select(".x-axis-hover").selectAll(".label").data(["x"]),
+            xAxisHoverEnter = xAxisHover.enter().append("g").attr("class", "label"),
+            xAxisHoverUpdate = xAxisHover;
 
-        var edgeLabel = g.select(".x-axis-hover").selectAll(".label").data(["x"]),
-            edgeLabelEnter = edgeLabel.enter().append("g").attr("class", "label"),
-            edgeLabelUpdate = edgeLabel;
-
-        edgeLabelEnter.append("rect")
+        xAxisHoverEnter.append("rect")
             .attr("x", -20)
             .attr("y", 6)
             .attr("width", 40)
             .attr("height", 14)
 
-        edgeLabelEnter.append("line")
+        xAxisHoverEnter.append("line")
             .attr("x1", 0)
             .attr("x2", 0)
             .attr("y1", 0)
             .attr("y2", 6);
 
-        edgeLabelEnter.append("text")
+        xAxisHoverEnter.append("text")
             .attr("dy", 18);
+
+        var yAxisHover = g.select(".y-axis-hover").selectAll(".label").data(["y"]),
+            yAxisHoverEnter = yAxisHover.enter().append("g").attr("class", "label"),
+            yAxisHoverUpdate = yAxisHover;
+
+        yAxisHoverEnter.append("rect")
+            .attr("x", 8)
+            .attr("y", -6)
+            .attr("width", 40)
+            .attr("height", 14)
+
+        yAxisHoverEnter.append("line")
+            .attr("x1", 0)
+            .attr("x2", 6)
+            .attr("y1", 0)
+            .attr("y2", 0);
+
+        yAxisHoverEnter.append("text")
+            .attr("dx", 8)
+            .attr("dy", 4);
+
+        var ySliceAxisHover = g.select(".y-slice-axis-hover").selectAll(".label").data(["y"]),
+            ySliceAxisHoverEnter = ySliceAxisHover.enter().append("g").attr("class", "label"),
+            ySliceAxisHoverUpdate = ySliceAxisHover;
+
+        ySliceAxisHoverEnter.append("rect")
+            .attr("x", 8)
+            .attr("y", -6)
+            .attr("width", 40)
+            .attr("height", 14)
+
+        ySliceAxisHoverEnter.append("line")
+            .attr("x1", 0)
+            .attr("x2", 6)
+            .attr("y1", 0)
+            .attr("y2", 0);
+
+        ySliceAxisHoverEnter.append("text")
+            .attr("dx", 8)
+            .attr("dy", 4);
 
         gTransition.select(".y.axis.slice")
             .style("opacity", mode === "offset" ? 0 : 1)
@@ -4808,6 +4889,74 @@ var VZ;
             .style("opacity", mode === "offset" ? 1 : 0)
             .attr("transform", "translate(" + width + ", " + (mode === "offset" ? 0 : height) + ")")
             .call(yAxis);
+
+        function onMouseMove() {
+          var m = d3.mouse(this),
+              v = xScale.invert(m[0]),
+              t = yScale.invert(m[1]);
+
+          function hoverXIndex(d) {
+            return Math.min(d[binsProp].length - 1, bisect(d[binsProp], v));
+          }
+          var closestSliceData;
+          var closestSliceDistance = Infinity;
+          var lastSliceData;
+          hoverUpdate
+            .attr("transform", function(d, i) {
+              var index = hoverXIndex(d);
+              lastSliceData = d;
+              var x = xScale(d[binsProp][index][xProp] + d[binsProp][index][dxProp] / 2);
+              var y = ySliceScale(d[binsProp][index][yProp]);
+              var globalY = (mode === "offset" ? yScale(timeAccessor(d)) - (sliceHeight - y) : y);
+              var dist = Math.abs(m[1] - globalY);
+              if (dist < closestSliceDistance) {
+                closestSliceDistance = dist;
+                closestSliceData = d;
+              }
+              return "translate(" + x + "," + y + ")";
+            });
+          hoverUpdate.select("text").text(function(d) {
+            var index = hoverXIndex(d);
+            return d[binsProp][index][yProp];
+          })
+          hoverUpdate.classed("hover-closest", function(d) { return d === closestSliceData; });
+          outlineUpdate.classed("outline-hover", function(d) { return d === closestSliceData; });
+
+          var index = hoverXIndex(lastSliceData);
+
+          xAxisHoverUpdate
+              .attr("transform", function(d) {
+                return "translate(" +
+                  xScale(lastSliceData[binsProp][index][xProp] +
+                         lastSliceData[binsProp][index][dxProp] / 2) + ", " +
+                  height + ")";
+              })
+            .select("text")
+              .text(function(d) { return format(lastSliceData[binsProp][index][xProp] +
+                                                lastSliceData[binsProp][index][dxProp] / 2); });
+
+          var fy = yAxis.tickFormat();
+          yAxisHoverUpdate
+              .attr("transform", function(d) {
+                return "translate(" + width + ", " +
+                  (mode === "offset" ? yScale(timeAccessor(closestSliceData)) : 0) + ")";
+              })
+              .style("display", mode === "offset" ? "" : "none")
+            .select("text")
+              .text(function(d) { return fy(timeAccessor(closestSliceData));});
+
+          var fsy = ySliceAxis.tickFormat();
+          ySliceAxisHoverUpdate
+              .attr("transform", function(d) {
+                return "translate(" + width + ", " +
+                  (mode === "offset" ? 0 : ySliceScale(closestSliceData[binsProp][index][yProp])) +
+                  ")";
+              })
+              .style("display", mode === "offset" ? "none" : "")
+            .select("text")
+              .text(function(d) { return fsy(closestSliceData[binsProp][index][yProp]); });
+
+        }
       }
     });
     </script>
