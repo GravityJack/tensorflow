@@ -209,8 +209,8 @@ The #center div contains tf-line-charts embedded inside tf-collapsable-panes.
         var b = currentTarget.parentNode.querySelector('.log-option-button');
         var c = currentTarget.parentNode.querySelector('vz-line-chart');
         if (c !== null) {
-          c.yScale = c.yScale === 'log' ? 'linear' : 'log';
-          b.icon = c.yScale === 'log' ? 'line-weight' : 'reorder';
+          c.yScaleType = c.yScaleType === 'log' ? 'linear' : 'log';
+          b.icon = c.yScaleType === 'log' ? 'line-weight' : 'reorder';
           c.redraw();
         }
       },

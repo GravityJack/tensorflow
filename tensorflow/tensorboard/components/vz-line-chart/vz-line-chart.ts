@@ -71,9 +71,7 @@ module VZ {
       this.xScale = xComponents.scale;
       this.xAxis = xComponents.axis;
       this.xAxis.margin(0).tickLabelPadding(3);
-
-      this.yScale = this.getYScaleFromType(yScaleType);
-
+      this.yScale = LineChart.getYScaleFromType(yScaleType);
       this.yAxis = new Plottable.Axes.Numeric(this.yScale, 'left');
       let yFormatter = VZ.ChartHelpers.multiscaleFormatter(
           VZ.ChartHelpers.Y_AXIS_FORMATTER_PRECISION);
@@ -410,7 +408,7 @@ module VZ {
       return this.name2datasets[name];
     }
 
-    private getYScaleFromType(yScaleType: string): Plottable.QuantitativeScale<number> {
+    static getYScaleFromType(yScaleType: string): Plottable.QuantitativeScale<number> {
       if (yScaleType === 'log') {
         return new Plottable.Scales.ModifiedLog();
       } else if (yScaleType === 'linear') {
