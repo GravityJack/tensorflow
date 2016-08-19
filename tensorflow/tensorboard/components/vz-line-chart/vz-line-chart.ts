@@ -45,7 +45,7 @@ module VZ {
     private smoothingEnabled: Boolean;
 
     constructor(
-        xType: string, yScale: string, colorScale: Plottable.Scales.Color,
+        xType: string, yScaleType: string, colorScale: Plottable.Scales.Color,
         tooltip: d3.Selection<any>) {
       this.seriesNames = [];
       this.name2datasets = {};
@@ -59,10 +59,10 @@ module VZ {
       // need to do a single bind, so we can deregister the callback from
       // old Plottable.Datasets. (Deregistration is done by identity checks.)
       this.onDatasetChanged = this._onDatasetChanged.bind(this);
-      this.buildChart(xType, yScale);
+      this.buildChart(xType, yScaleType);
     }
 
-    private buildChart(xType: string, yScale: string) {
+    private buildChart(xType: string, yScaleType: string) {
       if (this.outer) {
         this.outer.destroy();
       }
@@ -71,7 +71,17 @@ module VZ {
       this.xScale = xComponents.scale;
       this.xAxis = xComponents.axis;
       this.xAxis.margin(0).tickLabelPadding(3);
-      this.yScale = yScale === 'log' ? new Plottable.Scales.ModifiedLog() : new Plottable.Scales.Linear();
+
+      this.yScale = (function getYScaleFromType(yScaleType: string): Plottable.QuantitativeScale<D> {
+        if (yScaleType === "log") {
+          return new Plottable.Scales.ModifiedLog();
+        } else if (yScaleType === "linear") {
+          return new Plottable.Scales.Linear();
+        } else {
+          throw new Error("Unrecognized yScale type " + yScaleType);
+        }
+      })
+
       this.yAxis = new Plottable.Axes.Numeric(this.yScale, 'left');
       let yFormatter = VZ.ChartHelpers.multiscaleFormatter(
           VZ.ChartHelpers.Y_AXIS_FORMATTER_PRECISION);
