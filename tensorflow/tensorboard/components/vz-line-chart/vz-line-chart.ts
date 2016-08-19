@@ -72,7 +72,7 @@ module VZ {
       this.xAxis = xComponents.axis;
       this.xAxis.margin(0).tickLabelPadding(3);
 
-      this.yScale = this.getYScaleFromType(yScaleType)
+      this.yScale = this.getYScaleFromType(yScaleType);
 
       this.yAxis = new Plottable.Axes.Numeric(this.yScale, 'left');
       let yFormatter = VZ.ChartHelpers.multiscaleFormatter(
@@ -411,12 +411,12 @@ module VZ {
     }
 
     private getYScaleFromType(yScaleType: string): Plottable.QuantitativeScale<number> {
-      if (yScaleType === "log") {
+      if (yScaleType === 'log') {
         return new Plottable.Scales.ModifiedLog();
-      } else if (yScaleType === "linear") {
+      } else if (yScaleType === 'linear') {
         return new Plottable.Scales.Linear();
       } else {
-        throw new Error("Unrecognized yScale type " + yScaleType);
+        throw new Error('Unrecognized yScale type ' + yScaleType);
       }
     }
 
@@ -467,8 +467,6 @@ module VZ {
         this.updateSpecialDatasets(this.scalarAccessor);
       }
     }
-
-
 
     public renderTo(target: d3.Selection<any>) { this.outer.renderTo(target); }
 
