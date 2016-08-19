@@ -157,9 +157,9 @@ smoothing.
         /**
          * The scale for the y-axis. Allows:
          * - "linear" - linear scale (Plottable.Scales.Linear)
-         * - "log" - modified-linear scale (Plottable.Scales.ModifiedLog)
+         * - "log" - modified-log scale (Plottable.Scales.ModifiedLog)
          */
-        yScale: {
+        yScaleType: {
           type: String,
           value: 'linear'
         },
@@ -180,7 +180,7 @@ smoothing.
         }
       },
       observers: [
-        "_makeChart(xType, yScale, colorScale, _attached)",
+        "_makeChart(xType, yScaleType, colorScale, _attached)",
         "_reloadFromCache(_chart)",
         "_smoothingChanged(smoothingDecay, smoothingEnabled, _chart)"
       ],
@@ -235,7 +235,7 @@ smoothing.
         this.scopeSubtree(this.$.tooltip, true);
         this.scopeSubtree(this.$.chartsvg, true);
       },
-      _makeChart: function(xType, yScale, colorScale, _attached) {
+      _makeChart: function(xType, yScaleType, colorScale, _attached) {
         if (this._makeChartAsyncCallbackId === null) {
           this.cancelAsync(this._makeChartAsyncCallbackId);
         }
@@ -245,7 +245,7 @@ smoothing.
           if (!this._attached) return;
           if (this._chart) this._chart.destroy();
           var tooltip = d3.select(this.$.tooltip);
-          var chart = new VZ.LineChart(xType, yScale, colorScale, tooltip);
+          var chart = new VZ.LineChart(xType, yScaleType, colorScale, tooltip);
           var svg = d3.select(this.$.chartsvg);
           chart.renderTo(svg);
           this._chart = chart;
